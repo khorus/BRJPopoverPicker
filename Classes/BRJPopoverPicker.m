@@ -25,9 +25,14 @@
 #import "BRJPopoverPicker.h"
 
 static NSString * const BRJPopoverPickerCellReuseIdentifier = @"BRJPopoverPickerCellReuseIdentifier";
+static CGFloat const BRJPopoverPickerIntrinsicWidth = 260.0;
+static CGFloat const BRJPopoverPickerIntrinsicHeight = 400.0;
+static CGFloat const BRJPopoverPickerRowHeight = 44.0;
+
 
 @interface BRJPopoverPicker () <UITableViewDataSource, UITableViewDelegate>
 @property (strong, nonatomic) UIPopoverController *popoverController;
+@property (strong, nonatomic) UINavigationController *navigationController;
 @property (strong, nonatomic) UITableViewController *tableViewController;
 @property (assign, nonatomic) NSUInteger selectedIndex;
 @end
@@ -37,20 +42,24 @@ static NSString * const BRJPopoverPickerCellReuseIdentifier = @"BRJPopoverPicker
     self = [super init];
     if (self) {
         _selectedIndex = NSNotFound;
+        _maintainSelection = YES;
+        _showCheckmarkForSelectedRow = NO;
         
         _tableViewController = ({
             UITableViewController *tableViewController = [[UITableViewController alloc] initWithStyle:UITableViewStylePlain];
             tableViewController.tableView.dataSource = self;
             tableViewController.tableView.delegate = self;
             [tableViewController.tableView registerClass:[UITableViewCell class] forCellReuseIdentifier:BRJPopoverPickerCellReuseIdentifier];
+            tableViewController.tableView.tableFooterView = [[UIView alloc] initWithFrame:CGRectZero];
+
             tableViewController.clearsSelectionOnViewWillAppear = NO;
             tableViewController;
         });
         
         _popoverController = ({
-            UINavigationController *navigationController = [[UINavigationController alloc] initWithRootViewController:_tableViewController];
+            _navigationController = [[UINavigationController alloc] initWithRootViewController:_tableViewController];
             
-            UIPopoverController *popoverController = [[UIPopoverController alloc] initWithContentViewController:navigationController];
+            UIPopoverController *popoverController = [[UIPopoverController alloc] initWithContentViewController:_navigationController];
             popoverController.backgroundColor = [UIColor whiteColor];
             
             popoverController;
@@ -63,8 +72,9 @@ static NSString * const BRJPopoverPickerCellReuseIdentifier = @"BRJPopoverPicker
 - (void)configureCell:(UITableViewCell *)cell atIndexPath:(NSIndexPath *)indexPath {
     NSString *title = [self titleForRowAtIndex:indexPath.row];
     cell.textLabel.text = title;
-    
-    if (self.selectedBackgroundColor) {
+    cell.accessoryType = UITableViewCellAccessoryNone;
+
+    if (self.selectedBackgroundColor && !self.showCheckmarkForSelectedRow) {
         cell.selectedBackgroundView = ({
             UIView *background = [[UIView alloc] init];
             background.backgroundColor = self.selectedBackgroundColor;
@@ -79,6 +89,14 @@ static NSString * const BRJPopoverPickerCellReuseIdentifier = @"BRJPopoverPicker
     else {
         cell.selectionStyle = UITableViewCellEditingStyleNone;
         cell.textLabel.textColor = [UIColor grayColor];
+    }
+
+    if (self.showCheckmarkForSelectedRow) {
+        // nullify background view
+        cell.selectedBackgroundView = nil;
+        if (self.selectedIndex == indexPath.row) {
+            cell.accessoryType = UITableViewCellAccessoryCheckmark;
+        }
     }
 }
 
@@ -97,7 +115,6 @@ static NSString * const BRJPopoverPickerCellReuseIdentifier = @"BRJPopoverPicker
 
 - (void)deselectSelectedRow {
     self.selectedIndex = NSNotFound;
-    
     [self processRowSelection];
 }
 
@@ -108,7 +125,7 @@ static NSString * const BRJPopoverPickerCellReuseIdentifier = @"BRJPopoverPicker
             [self.tableViewController.tableView deselectRowAtIndexPath:selectedPath animated:YES];
         }
     }
-    else {
+    else if (self.maintainSelection && !self.showCheckmarkForSelectedRow) {
         [self.tableViewController.tableView selectRowAtIndexPath:[NSIndexPath indexPathForRow:self.selectedIndex inSection:0] animated:YES scrollPosition:UITableViewScrollPositionMiddle];
     }
 }
@@ -153,6 +170,8 @@ static NSString * const BRJPopoverPickerCellReuseIdentifier = @"BRJPopoverPicker
 - (void)presentPopover {
     if ([self.delegate respondsToSelector:@selector(contentSizeForPopoverPicker:)]) {
         self.popoverController.popoverContentSize = [self.delegate contentSizeForPopoverPicker:self];
+    } else {
+        self.popoverController.popoverContentSize = [self intrinsicPopoverSize];
     }
     [self.tableViewController.tableView reloadData];
     [self processRowSelection];
@@ -186,10 +205,32 @@ static NSString * const BRJPopoverPickerCellReuseIdentifier = @"BRJPopoverPicker
         [self.delegate popoverPicker:self didSelectRowWithTitle:title atIndex:indexPath.row];
     }
     [self dismissPopoverPickerAnimated:YES];
+    if (!self.maintainSelection) {
+        [tableView deselectRowAtIndexPath:indexPath animated:NO];
+    }
 }
 
 - (NSIndexPath *)tableView:(UITableView *)tableView willSelectRowAtIndexPath:(NSIndexPath *)indexPath {
     return [self canSelectRowAtIndex:indexPath.row] ? indexPath : nil;
+}
+
+- (CGFloat)tableView:(UITableView *)tableView heightForRowAtIndexPath:(NSIndexPath *)indexPath {
+    return BRJPopoverPickerRowHeight;
+}
+
+/**
+ * Returns a reasonable size for the popover that is at or near (w,h).
+ * This size is used if the delegate does not specify a content size for the
+ * popover.
+ * 
+ * @return A CGSize that represents a reasonable size for the popover.
+ */
+- (CGSize)intrinsicPopoverSize {
+    CGFloat width = BRJPopoverPickerIntrinsicWidth;
+    CGFloat navHeight = self.navigationController.toolbar.frame.size.height;
+    CGFloat tableHeight = [self numberOfRows] * BRJPopoverPickerRowHeight;
+    CGFloat height = MIN(BRJPopoverPickerIntrinsicHeight, navHeight + tableHeight);
+    return CGSizeMake(width, height);
 }
 
 @end

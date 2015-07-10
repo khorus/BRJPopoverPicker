@@ -56,6 +56,19 @@
 @property (strong, nonatomic) UIColor *selectedBackgroundColor;
 
 /**
+ Flag that indicates whether the currently selected row should be maintained
+ between showings of the popover. The default is yes.
+ */
+@property (assign, nonatomic) BOOL maintainSelection;
+
+/**
+ Flag that indicates whether the currently selected row should show a checkmark
+ accessory view. The default is no. This respects the maintainSelection flag.
+ If this is set to true, the selectedBackgroundColor is not maintained.
+ */
+@property (assign, nonatomic) BOOL showCheckmarkForSelectedRow;
+
+/**
  Returns the title for row at the specified index in the picker
  
  @param index Zero-indexed row number
