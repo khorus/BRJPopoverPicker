@@ -69,6 +69,11 @@
 @property (assign, nonatomic) BOOL showCheckmarkForSelectedRow;
 
 /**
+ DESIGNATED INITIALIZER
+ */
+- (instancetype)initWithDelegate:(id<BRJPopoverPickerDelegate>) delegate andDataSource:(id<BRJPopoverPickerDataSource>) dataSource;
+
+/**
  Returns the title for row at the specified index in the picker
  
  @param index Zero-indexed row number

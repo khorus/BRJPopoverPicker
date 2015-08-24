@@ -38,9 +38,11 @@ static CGFloat const BRJPopoverPickerRowHeight = 44.0;
 @end
 
 @implementation BRJPopoverPicker
-- (instancetype)init {
+- (instancetype)initWithDelegate:(id<BRJPopoverPickerDelegate>)delegate andDataSource:(id<BRJPopoverPickerDataSource>)dataSource {
     self = [super init];
     if (self) {
+        _delegate = delegate;
+        _dataSource = dataSource;
         _selectedIndex = NSNotFound;
         _maintainSelection = YES;
         _showCheckmarkForSelectedRow = NO;
